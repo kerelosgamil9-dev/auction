@@ -36,10 +36,10 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          echo "=== LAST 50 LINES ==="
-          tail -n 50 build.log
-          echo "=== LINES WITH Command failed / Traceback ==="
-          grep -n -E "Command failed|Traceback|BUILD FAILED|FAILURE|No such file|not found" build.log | tail -n 30
+          echo "=== GRADLE ERROR ==="
+          grep -n -B 25 -A 15 "What went wrong" build.log | tail -n 80
+          echo "=== BEFORE FAILURE ==="
+          grep -n -B 30 "FAILURE: Build failed with an exception" build.log | head -n 70
 
       - uses: actions/upload-artifact@v4
         with:
