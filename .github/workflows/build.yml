@@ -1,0 +1,28 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate assets (icons, sounds, font)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-dejavu-core
+          mkdir -p assets/fonts
+          cp /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf assets/fonts/
+          cp /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf assets/fonts/
+          pip install pillow
+          python gen_assets.py
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
+        with:
+          command: buildozer android debug
+          buildozer_version: stable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grand-auction-apk
+          path: ${{ steps.buildozer.outputs.filename }}
