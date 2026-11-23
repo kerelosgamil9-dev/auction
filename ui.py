@@ -11,6 +11,7 @@ from kivy.graphics import Color, Rectangle, RoundedRectangle
 from kivy.metrics import dp, sp
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
@@ -215,41 +216,67 @@ class Btn(ButtonBehavior, Label):
             self.on()
 
 
-class Inp(TextInput):
-    """Text field that shows Arabic correctly.
-    The real TextInput keeps the logical text (so .text is normal) but is drawn invisible;
-    a Label on top shows the shaped text (joined letters, right direction)."""
+class NumInp(TextInput):
+    """Plain, fully visible input (numbers, IP addresses)."""
 
     def __init__(self, text="", hint="", num=False, **kw):
-        clear = (0, 0, 0, 0)
-        super().__init__(text=text, hint_text="", multiline=False, write_tab=False,
+        super().__init__(text=text, hint_text=hint, multiline=False, write_tab=False,
                          input_filter="int" if num else None, font_size=sp(18),
                          background_normal="", background_active="", background_color=col("inputbg"),
-                         foreground_color=clear, cursor_color=clear, selection_color=clear,
-                         padding=[dp(12), dp(12), dp(12), dp(8)], **kw)
+                         foreground_color=col("text"), hint_text_color=col("muted"),
+                         cursor_color=col("accent"), padding=[dp(12), dp(12), dp(12), dp(8)], **kw)
+
+
+class NameInp(FloatLayout):
+    """Name field that displays Arabic correctly.
+    A real TextInput (invisible text) sits underneath and keeps the logical text;
+    a Label on top shows the shaped text. .text works like a normal TextInput's."""
+
+    def __init__(self, text="", hint="", **kw):
+        super().__init__(**kw)
         self._hint = hint
-        self._ov = Label(font_size=sp(18), color=col("text"), valign="middle", halign="left")
-        self.add_widget(self._ov)
-        self.bind(pos=self._lay, size=self._lay, text=self._upd, focus=self._upd)
-        self._lay()
+        self.ti = TextInput(text=text, multiline=False, write_tab=False, font_size=sp(18),
+                            background_normal="", background_active="", background_color=col("inputbg"),
+                            foreground_color=(0, 0, 0, 0), cursor_color=(0, 0, 0, 0),
+                            selection_color=(0, 0, 0, 0), size_hint=(1, 1), pos_hint={"x": 0, "y": 0})
+        self.ov = Label(font_size=sp(18), valign="middle", size_hint=(1, 1), pos_hint={"x": 0, "y": 0})
+        self.add_widget(self.ti)
+        self.add_widget(self.ov)
+        self.ov.bind(size=self._ts)
+        self.ti.bind(text=self._upd, focus=self._upd)
         self._upd()
 
-    def _lay(self, *a):
-        self._ov.pos = (self.x + dp(12), self.y)
-        self._ov.size = (max(0, self.width - dp(24)), self.height)
-        self._ov.text_size = self._ov.size
+    def _ts(self, *a):
+        self.ov.text_size = (max(0, self.ov.width - dp(24)), self.ov.height)
+
+    @property
+    def text(self):
+        ti = getattr(self, "ti", None)
+        return ti.text if ti is not None else ""
+
+    @text.setter
+    def text(self, v):
+        ti = getattr(self, "ti", None)
+        if ti is not None:
+            ti.text = v
 
     def _upd(self, *a):
-        if self.text:
-            shown = shape(self.text) + ("  |" if self.focus and has_arabic(self.text) else "")
-            if self.focus and not has_arabic(self.text):
-                shown = self.text + "|"
-            self._ov.text, self._ov.color = shown, col("text")
-            self._ov.halign = "right" if has_arabic(self.text) else "left"
+        txt, foc = self.ti.text, self.ti.focus
+        if txt:
+            self.ov.text = shape(txt) + ("|" if foc else "")
+            self.ov.color = col("text")
+            self.ov.halign = "right" if has_arabic(txt) else "left"
         else:
-            self._ov.text = ("|" if self.focus else self._hint)
-            self._ov.color = col("muted")
-            self._ov.halign = "right" if has_arabic(self._hint) and not self.focus else "left"
+            self.ov.text = "|" if foc else self._hint
+            self.ov.color = col("muted")
+            self.ov.halign = "right" if (has_arabic(self._hint) and not foc) else "left"
+
+
+def Inp(text="", hint="", num=False, plain=False, **kw):
+    """num / plain -> normal visible TextInput; otherwise the Arabic-aware name field."""
+    if num or plain:
+        return NumInp(text, hint, num, **kw)
+    return NameInp(text, hint, **kw)
 
 
 def spacer(h=None):

@@ -19,13 +19,17 @@ MAGIC = "AUCTION_LAN_V1"
 
 
 def local_ip():
-    """Best guess of this phone's LAN / hotspot address (works with no internet)."""
-    for target in ("10.255.255.255", "192.168.255.255", "172.16.255.255", "8.8.8.8"):
+    """Best guess of this phone's LAN / hotspot address (works with no internet).
+    Also works on the phone that *creates* the hotspot (it has no default route)."""
+    targets = ("192.168.43.255", "192.168.49.255", "192.168.137.255", "172.20.10.255", "192.168.1.255",
+               "192.168.0.255", "192.168.2.255", "10.0.0.255", "10.255.255.255", "172.16.255.255", "8.8.8.8")
+    for target in targets:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             s.connect((target, 1))
             ip = s.getsockname()[0]
-            if ip and not ip.startswith("127."):
+            if ip and not ip.startswith(("127.", "0.")):
                 return ip
         except OSError:
             pass
@@ -124,7 +128,9 @@ class HostServer:
         while not self.stop.is_set():
             data = json.dumps({"magic": MAGIC, "name": self.room_name, "port": PORT,
                                "players": self.players}, ensure_ascii=False).encode("utf-8")
-            for addr in ("255.255.255.255", "<broadcast>"):
+            ip = local_ip()
+            subnet = ip.rsplit(".", 1)[0] + ".255"      # directed broadcast reaches the hotspot interface
+            for addr in ("255.255.255.255", subnet):
                 try:
                     s.sendto(data, (addr, DISC_PORT))
                 except OSError:

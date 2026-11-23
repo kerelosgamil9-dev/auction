@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """Grand Auction (المزاد الكبير) - multiplayer auction game, Kivy.
 Screens: menu -> setup -> categories -> (lobby) -> game -> final.  join -> lobby -> game."""
-import math
+import os
 
 from kivy.app import App
 from kivy.clock import Clock
+from kivy.base import ExceptionHandler, ExceptionManager
 from kivy.core.window import Window
 from kivy.metrics import dp, sp
 from kivy.uix.boxlayout import BoxLayout
@@ -53,6 +54,11 @@ RULES_EN = [
 
 def A():
     return App.get_running_app()
+
+
+def _cut():
+    """Which end to cut when a name is too long (Arabic is stored in visual order)."""
+    return "left" if Pref.lang == "ar" else "right"
 
 
 class Base(Screen):
@@ -232,7 +238,7 @@ class LobbyScreen(Base):
         for p in st["players"]:
             r = Card(orientation="horizontal", padding=dp(10), height=dp(48))
             label = tf("%s  (أنت)", "%s  (you)", p["name"]) if p["id"] == s.my_pid else shape(p["name"])
-            r.add_widget(Lbl(label, size=17, bold=True))
+            r.add_widget(Lbl(label, size=17, bold=True, shorten=True, shorten_from=_cut(), max_lines=1))
             r.add_widget(Lbl(t("متصل", "Online") if p["connected"] else t("غير متصل", "Offline"), size=14,
                              color="goodtxt" if p["connected"] else "badtxt", size_hint_x=None, width=dp(90)))
             rows.append(r)
@@ -264,7 +270,7 @@ class JoinScreen(Base):
         self.fill_found()
         page.add_widget(Lbl(t("أو اكتب عنوان المضيف يدوياً", "Or type the host address"), size=15, color="muted",
                              size_hint_y=None, height=dp(24)))
-        self.ip = Inp("", hint="192.168.x.x", size_hint_y=None, height=dp(48))
+        self.ip = Inp("", hint="192.168.x.x", plain=True, size_hint_y=None, height=dp(48))
         page.add_widget(self.ip)
         self.status = Lbl("", size=15, color="accent", size_hint_y=None, height=dp(30))
         page.add_widget(self.status)
@@ -381,7 +387,7 @@ class GameScreen(Base):
             if a.sess.mode != "local" and p["id"] == a.sess.my_pid:
                 tags.append(t("أنت", "You"))
             nm = BoxLayout(orientation="vertical", size_hint_x=.4)
-            nm.add_widget(Lbl(shape(p["name"]), size=16, bold=True))
+            nm.add_widget(Lbl(shape(p["name"]), size=16, bold=True, shorten=True, shorten_from=_cut(), max_lines=1))
             nm.add_widget(Lbl(" • ".join(tags), size=11, color="accent" if p["id"] == st["high_by"] else "muted"))
             row.add_widget(nm)
             row.add_widget(Lbl(tf("رصيد\n%d", "Budget\n%d", p["budget"]), size=13))
@@ -442,7 +448,8 @@ class GameScreen(Base):
             strip.bind(minimum_width=strip.setter("width"))
             for p in st["players"]:
                 strip.add_widget(Btn(shape(p["name"]), kind="accent" if p["id"] == me["id"] else "card2",
-                                     on=lambda pid=p["id"]: self.pick(pid), size_hint_x=None, width=dp(104), size=15))
+                                     on=lambda pid=p["id"]: self.pick(pid), size_hint_x=None, width=dp(104), size=15,
+                                     shorten=True, shorten_from=_cut(), max_lines=1))
             sv.add_widget(strip)
             box.add_widget(sv)
             h += dp(46)
@@ -589,6 +596,25 @@ class FinalScreen(Base):
 
 
 # ===================================================================== app
+class CrashHandler(ExceptionHandler):
+    """Keep the app alive on an error and show it, so a screenshot shows what went wrong."""
+    last = None
+
+    def handle_exception(self, inst):
+        import traceback
+        tb = traceback.format_exc()
+        try:
+            with open(os.path.join(App.get_running_app().user_data_dir, "crash.log"), "a", encoding="utf-8") as f:
+                f.write(tb + "\n")
+            if tb != CrashHandler.last:
+                CrashHandler.last = tb
+                lines = [(ln[:70], "badtxt") for ln in tb.strip().splitlines()[-9:]]
+                popup("Error / خطأ", lines, row_h=26)
+        except Exception:
+            pass
+        return ExceptionManager.PASS
+
+
 class AuctionApp(App):
     title = "Grand Auction"
 
@@ -608,6 +634,7 @@ class AuctionApp(App):
         self.link_down = False
         self._prev = {}
         self.sess = Session(self.on_state, self.on_event)
+        ExceptionManager.add_handler(CrashHandler())
         Window.clearcolor = col("bg")
         try:
             Window.softinput_mode = "below_target"
