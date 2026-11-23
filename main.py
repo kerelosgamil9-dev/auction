@@ -315,10 +315,10 @@ class GameScreen(Base):
         super().on_pre_enter()
 
     def build(self, page):
-        self.top = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6))
+        self.topbox = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6))
         self.plist = BoxLayout()
         self.panel = BoxLayout(orientation="vertical", size_hint_y=None, spacing=dp(6))
-        for w in (self.top, self.plist, self.panel):
+        for w in (self.topbox, self.plist, self.panel):
             page.add_widget(w)
         if A().sess.state:
             self.update(A().sess.state)
@@ -332,7 +332,7 @@ class GameScreen(Base):
     def fill_top(self, st):
         a = A()
         cat = CAT[st["cfg"]["cat"]]
-        top = self.top
+        top = self.topbox
         top.clear_widgets()
         row = BoxLayout(size_hint_y=None, height=dp(44), spacing=dp(8))
         row.add_widget(Lbl(tf("الجولة %d من %d", "Round %d of %d", st["round"], st["rounds"]), size=17, bold=True))

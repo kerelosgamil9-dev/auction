@@ -17,7 +17,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 
 from gamedata import ITEMS
-from textfx import shape, wrap
+from textfx import has_arabic, shape, wrap
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -216,12 +216,40 @@ class Btn(ButtonBehavior, Label):
 
 
 class Inp(TextInput):
+    """Text field that shows Arabic correctly.
+    The real TextInput keeps the logical text (so .text is normal) but is drawn invisible;
+    a Label on top shows the shaped text (joined letters, right direction)."""
+
     def __init__(self, text="", hint="", num=False, **kw):
-        super().__init__(text=text, hint_text=hint, multiline=False, write_tab=False,
+        clear = (0, 0, 0, 0)
+        super().__init__(text=text, hint_text="", multiline=False, write_tab=False,
                          input_filter="int" if num else None, font_size=sp(18),
                          background_normal="", background_active="", background_color=col("inputbg"),
-                         foreground_color=col("text"), hint_text_color=col("muted"),
-                         cursor_color=col("accent"), padding=[dp(12), dp(12), dp(12), dp(8)], **kw)
+                         foreground_color=clear, cursor_color=clear, selection_color=clear,
+                         padding=[dp(12), dp(12), dp(12), dp(8)], **kw)
+        self._hint = hint
+        self._ov = Label(font_size=sp(18), color=col("text"), valign="middle", halign="left")
+        self.add_widget(self._ov)
+        self.bind(pos=self._lay, size=self._lay, text=self._upd, focus=self._upd)
+        self._lay()
+        self._upd()
+
+    def _lay(self, *a):
+        self._ov.pos = (self.x + dp(12), self.y)
+        self._ov.size = (max(0, self.width - dp(24)), self.height)
+        self._ov.text_size = self._ov.size
+
+    def _upd(self, *a):
+        if self.text:
+            shown = shape(self.text) + ("  |" if self.focus and has_arabic(self.text) else "")
+            if self.focus and not has_arabic(self.text):
+                shown = self.text + "|"
+            self._ov.text, self._ov.color = shown, col("text")
+            self._ov.halign = "right" if has_arabic(self.text) else "left"
+        else:
+            self._ov.text = ("|" if self.focus else self._hint)
+            self._ov.color = col("muted")
+            self._ov.halign = "right" if has_arabic(self._hint) and not self.focus else "left"
 
 
 def spacer(h=None):
