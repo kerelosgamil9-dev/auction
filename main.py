@@ -2,6 +2,7 @@
 """Grand Auction (المزاد الكبير) - multiplayer auction game, Kivy.
 Screens: menu -> setup -> categories -> (lobby) -> game -> final.  join -> lobby -> game."""
 import os
+import textwrap
 
 from kivy.app import App
 from kivy.clock import Clock
@@ -14,12 +15,13 @@ from kivy.uix.image import Image
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.screenmanager import NoTransition, Screen, ScreenManager
 
+import androidtools
 import netplay
 from gamedata import CAT, CATEGORIES, ITEMS
 from session import Session
 from textfx import shape, wrap
-from ui import (Btn, Card, Inp, Lbl, Page, Pref, Sfx, TapCard, asset, cat_name, col, header, iname,
-                L, popup, scroll_list, sign, spacer, t, tag_name, tf, toast, tw)
+from ui import (Btn, Card, Inp, Lbl, Page, Pref, Sfx, TapCard, asset, col, header, iname,
+                L, popup, scroll_list, spacer, t, tag_name, tf, toast, tw)
 
 ERRORS = {
     "low": ("يجب أن تزيد على أعلى مزايدة حالية", "Your bid must beat the highest bid"),
@@ -40,7 +42,7 @@ RULES_AR = [
     "باقي اللاعبين لا يخسرون شيئاً، ويحصل كل منهم على عنصر عشوائي قد يكون مفيداً أو مقلباً.",
     "من يصل رصيده إلى صفر لا يستطيع المزايدة، لكنه يكمل اللعب ويأخذ عنصره العشوائي.",
     "تنتهي الجولة عندما يمرّر الجميع، أو عندما يضغط المضيف على حسم المزاد.",
-    "في النهاية: مجموع قوة العناصر + نقاط التكامل (عناصر من نفس النوع، تنوع الأنواع، اكتمال كل الأنواع) - خسارة المقالب. الأعلى يفوز، والتعادل يُحسم بالرصيد المتبقي.",
+    "في النهاية يحسب البرنامج بنفسه قوة كل ما جمعه اللاعب (مع تكامل العناصر المتشابهة) ويخصم المقالب، ويعلن الفائز. التعادل يُحسم بالرصيد المتبقي.",
 ]
 RULES_EN = [
     "Each round an item is auctioned. Players bid any amount they like as long as their budget is above 0.",
@@ -48,12 +50,19 @@ RULES_EN = [
     "Everyone else pays nothing and gets a random item - it may be a gift or a prank.",
     "A player at 0 budget cannot bid but keeps playing and gets the random item.",
     "A round ends when everyone passes, or when the host presses End Bidding.",
-    "Final score = item power + combo points (same type, variety, complete set) - prank penalties. Highest wins; ties go to the larger remaining budget.",
+    "At the end the game itself adds up the strength of everything a player collected (with bonuses for matching items) minus the pranks, and announces the winner. Ties go to the larger remaining budget.",
 ]
 
 
 def A():
     return App.get_running_app()
+
+
+def tfw(ar, en, width, *args):
+    """Like tf() but wraps long sentences into several lines (logical order first, then shaped)."""
+    if Pref.lang == "ar":
+        return wrap(ar % args, width)
+    return "\n".join(textwrap.wrap(en % tuple(shape(a) if isinstance(a, str) else a for a in args), width))
 
 
 def _cut():
@@ -212,6 +221,28 @@ class CategoryScreen(Base):
 
 # ===================================================================== lobby
 class LobbyScreen(Base):
+    _ip = None
+    _ev = None
+
+    def on_pre_enter(self, *args):
+        super().on_pre_enter()
+        if self._ev is None:
+            self._ev = Clock.schedule_interval(self._tick, 2)
+
+    def on_leave(self, *args):
+        if self._ev is not None:
+            self._ev.cancel()
+            self._ev = None
+
+    def _tick(self, dt):
+        s = A().sess
+        if s.mode == "host" and netplay.local_ip() != self._ip:
+            self.rebuild()
+
+    def open_hotspot(self):
+        if not androidtools.open_hotspot_settings():
+            toast(t("افتح إعدادات الهوت سبوت من الموبايل يدوياً", "Open the hotspot settings manually"))
+
     def build(self, page):
         a = A()
         s = a.sess
@@ -228,11 +259,21 @@ class LobbyScreen(Base):
         page.add_widget(info)
         if s.mode == "host":
             ip = netplay.local_ip()
-            box = Card(bg="card2", orientation="vertical", padding=dp(8), size_hint_y=None, height=dp(110))
-            box.add_widget(Lbl(t("عنوان الغرفة", "Room address"), size=14, color="muted"))
-            box.add_widget(Lbl(ip, size=28, bold=True))
-            box.add_widget(Lbl(t("يظهر تلقائياً عند اللاعبين على نفس الشبكة", "Shows up automatically for players on the same network"),
-                               size=12, color="muted"))
+            self._ip = ip
+            if ip == "127.0.0.1":
+                box = Card(bg="card2", orientation="vertical", padding=dp(8), spacing=dp(6), size_hint_y=None, height=dp(150))
+                box.add_widget(Lbl(tw("شغّل الهوت سبوت من موبايلك أولاً ليتصل به باقي اللاعبين",
+                                      "Turn on your phone's hotspot first so the other players can connect", 30),
+                                   size=15, color="badtxt"))
+                box.add_widget(Btn(t("فتح إعدادات الهوت سبوت", "Open hotspot settings"), kind="accent",
+                                   on=self.open_hotspot, size_hint_y=None, height=dp(50)))
+            else:
+                box = Card(bg="card2", orientation="vertical", padding=dp(8), size_hint_y=None, height=dp(150))
+                box.add_widget(Lbl(t("عنوان الغرفة", "Room address"), size=14, color="muted"))
+                box.add_widget(Lbl(ip, size=28, bold=True))
+                box.add_widget(Lbl(tw("اطلب من أصدقائك الاتصال بشبكة الهوت سبوت الخاصة بك ثم «الانضمام لغرفة»",
+                                      "Ask your friends to connect to your hotspot, then tap Join a Room", 34),
+                                   size=12, color="muted"))
             page.add_widget(box)
         rows = []
         for p in st["players"]:
@@ -253,19 +294,56 @@ class LobbyScreen(Base):
 
 # ===================================================================== join
 class JoinScreen(Base):
+    _ev = None
+
     def on_pre_enter(self, *args):
         A().sess.search()
         super().on_pre_enter()
+        if self._ev is None:
+            self._ev = Clock.schedule_interval(lambda dt: self.fill_net(), 2)
+
+    def on_leave(self, *args):
+        if self._ev is not None:
+            self._ev.cancel()
+            self._ev = None
+
+    def fill_net(self):
+        holder = getattr(self, "netbox", None)
+        if holder is None:
+            return
+        ip = netplay.local_ip()
+        key = ip == "127.0.0.1"
+        if getattr(self, "_netkey", None) == key and not key:
+            return
+        self._netkey = key
+        holder.clear_widgets()
+        card = Card(bg="card2", orientation="vertical", padding=dp(8), spacing=dp(6))
+        if key:
+            card.add_widget(Lbl(tw("غير متصل بأي شبكة: اتصل بالهوت سبوت الخاص بصاحب الغرفة",
+                                   "Not connected: connect to the room owner's hotspot", 32), size=14, color="badtxt"))
+            card.add_widget(Btn(t("فتح قائمة الواي فاي", "Open Wi-Fi list"), kind="accent",
+                                on=self.open_wifi, size_hint_y=None, height=dp(44), size=15))
+        else:
+            card.add_widget(Lbl(tf("متصل بالشبكة ✓  (%s)", "Connected to a network ✓  (%s)", ip), size=15, color="goodtxt"))
+        holder.add_widget(card)
+
+    def open_wifi(self):
+        if not androidtools.open_wifi_panel():
+            toast(t("افتح إعدادات الواي فاي من الموبايل يدوياً", "Open Wi-Fi settings manually"))
 
     def build(self, page):
         a = A()
         page.add_widget(header(t("الانضمام لغرفة", "Join a Room"), back=a.leave))
+        self.netbox = BoxLayout(size_hint_y=None, height=dp(100))
+        self._netkey = None
+        page.add_widget(self.netbox)
+        self.fill_net()
         self.i_name = Inp(Pref.data.get("join_name", ""), hint=t("اسمك", "Your name"), size_hint_y=None, height=dp(48))
         page.add_widget(Lbl(t("اسمك", "Your name"), size=15, color="muted", size_hint_y=None, height=dp(24)))
         page.add_widget(self.i_name)
         page.add_widget(Lbl(t("الغرف المتاحة (اضغط للاختيار)", "Rooms found (tap to pick)"), size=15, color="muted",
                             size_hint_y=None, height=dp(24)))
-        self.holder = BoxLayout(size_hint_y=None, height=dp(150))
+        self.holder = BoxLayout(size_hint_y=None, height=dp(110))
         page.add_widget(self.holder)
         self.fill_found()
         page.add_widget(Lbl(t("أو اكتب عنوان المضيف يدوياً", "Or type the host address"), size=15, color="muted",
@@ -344,13 +422,13 @@ class GameScreen(Base):
         row.add_widget(Lbl(tf("الجولة %d من %d", "Round %d of %d", st["round"], st["rounds"]), size=17, bold=True))
         row.add_widget(Btn(t("خروج", "Exit"), kind="card2", on=a.leave, size_hint_x=None, width=dp(80), size=15))
         top.add_widget(row)
-        card = Card(orientation="horizontal", padding=dp(8), spacing=dp(10), size_hint_y=None, height=dp(88))
+        card = Card(orientation="horizontal", padding=dp(8), spacing=dp(10), size_hint_y=None, height=dp(100))
         card.add_widget(Image(source=asset("icons", cat["id"] + ".png"), size_hint_x=None, width=dp(72)))
         info = BoxLayout(orientation="vertical")
         it = ITEMS[st["item"]]
-        info.add_widget(Lbl(t(it[1], it[2]), size=22, bold=True,
-                            color="accent"))
-        info.add_widget(Lbl(tf("القوة %d  •  %s", "Power %d  •  %s", it[3], tag_name(it[0])), size=14, color="muted"))
+        info.add_widget(Lbl(tw(it[1], it[2], 16), size=20, bold=True, color="accent"))
+        info.add_widget(Lbl(tf("النوع: %s", "Type: %s", tag_name(it[0])), size=14, color="muted",
+                            size_hint_y=None, height=dp(24)))
         card.add_widget(info)
         top.add_widget(card)
         hb = None
@@ -366,7 +444,7 @@ class GameScreen(Base):
             top.add_widget(Lbl(t("انقطع الاتصال... جاري إعادة المحاولة", "Connection lost... retrying"), size=14,
                                 color="badtxt", size_hint_y=None, height=dp(24)))
             n = 4
-        top.height = dp(44 + 88 + 30 + (24 if n == 4 else 0)) + dp(6) * n
+        top.height = dp(44 + 100 + 30 + (24 if n == 4 else 0)) + dp(6) * n
 
     # ---- players list
     def fill_list(self, st):
@@ -386,29 +464,23 @@ class GameScreen(Base):
                 tags.append(t("رصيد 0", "Broke"))
             if a.sess.mode != "local" and p["id"] == a.sess.my_pid:
                 tags.append(t("أنت", "You"))
-            nm = BoxLayout(orientation="vertical", size_hint_x=.4)
+            nm = BoxLayout(orientation="vertical", size_hint_x=2.2)
             nm.add_widget(Lbl(shape(p["name"]), size=16, bold=True, shorten=True, shorten_from=_cut(), max_lines=1))
             nm.add_widget(Lbl(" • ".join(tags), size=11, color="accent" if p["id"] == st["high_by"] else "muted"))
             row.add_widget(nm)
             row.add_widget(Lbl(tf("رصيد\n%d", "Budget\n%d", p["budget"]), size=13))
             row.add_widget(Lbl(tf("عناصر\n%d", "Items\n%d", len(p["items"])), size=13))
-            row.add_widget(Lbl(tf("نقاط\n%d", "Score\n%d", p["score"]), size=13, bold=True, color="accent"))
             row.bind(on_release=lambda w, p=p: self.show_items(p))
             rows.append(row)
         self.plist.add_widget(scroll_list(rows, 58))
 
     def show_items(self, p):
-        a = A()
-        eng = a.sess.eng
-        cfgcat = a.sess.state["cfg"]["cat"]
-        sc = _score(p["items"], cfgcat)
-        rows = [(tf("قوة %d + تكامل %d + مقالب %d = %d", "Power %d + Combo %d + Pranks %d = %d",
-                    sc["power"], sc["combo"], sc["pranks"], sc["total"]), "accent")]
+        rows = []
         if not p["items"]:
-            rows.append((t("لا يملك عناصر بعد", "No items yet"), "muted"))
-        for iid in sorted(p["items"], key=lambda i: -ITEMS[i][3]):
+            rows.append((t("لا يملك أي شيء بعد", "Owns nothing yet"), "muted"))
+        for iid in p["items"]:
             it = ITEMS[iid]
-            rows.append((tf("%s   [%s]   %s", "%s   [%s]   %s", iname(iid), tag_name(it[0]), sign(it[3])),
+            rows.append((tf("%s   (%s)", "%s   (%s)", iname(iid), tag_name(it[0])),
                          "goodtxt" if it[3] > 0 else "badtxt"))
         popup(shape(p["name"]), rows)
 
@@ -497,15 +569,16 @@ class GameScreen(Base):
         if res["winner"] is None:
             lines.append((t("لم يزايد أحد: لا فائز بالعنصر", "Nobody bid: the item is discarded"), "muted"))
         else:
-            lines.append((tf("فاز %s بـ %s مقابل %d", "%s won %s for %d", names[res["winner"]], iname(res["item"]),
-                             res["amount"]), "accent"))
+            lines.append((tfw("فاز %s بـ %s مقابل %d", "%s won %s for %d", 34, names[res["winner"]],
+                              iname(res["item"]), res["amount"]), "accent"))
         for pid, iid in res["randoms"].items():
-            pw = ITEMS[iid][3]
-            lines.append((tf("%s ← %s (%s)", "%s ← %s (%s)", names[int(pid)], iname(iid), sign(pw)),
-                          "goodtxt" if pw > 0 else "badtxt"))
-        labels = [Lbl(txt, size=15, color=c, bold=(i == 0), size_hint_y=None, height=dp(30))
-                  for i, (txt, c) in enumerate(lines)]
-        card = Card(orientation="vertical", padding=dp(6), size_hint_y=None, height=dp(min(30 * len(labels) + 12, 200)))
+            good = ITEMS[iid][3] > 0
+            lines.append((tfw("%s حصل على: %s", "%s got: %s", 34, names[int(pid)], iname(iid)),
+                          "goodtxt" if good else "badtxt"))
+        labels = [Lbl(txt, size=15, color=c, bold=(i == 0), size_hint_y=None,
+                      height=dp(22 * (txt.count("\n") + 1) + 10)) for i, (txt, c) in enumerate(lines)]
+        total = sum(l.height for l in labels)
+        card = Card(orientation="vertical", padding=dp(6), size_hint_y=None, height=min(total + dp(12), dp(210)))
         card.add_widget(scroll_list(labels, 30, 2))
         box.add_widget(card)
         h = card.height
@@ -545,13 +618,6 @@ class GameScreen(Base):
         A().sess.act("pass", pid=pid)
 
 
-def _score(items, cat_id):
-    from engine import Engine
-    e = Engine()
-    e.cfg["cat"] = cat_id
-    return e.score(items)
-
-
 # ===================================================================== final
 class FinalScreen(Base):
     def build(self, page):
@@ -578,15 +644,14 @@ class FinalScreen(Base):
             en_items = ", ".join(ITEMS[x][2] for x in r["items"]) or "None"
             txt = tw(ar_items, en_items, 34)
             n = txt.count("\n") + 1
-            card = Card(orientation="vertical", padding=dp(8), spacing=dp(2), height=dp(36 + 24 + 20 * n + 12))
+            card = Card(orientation="vertical", padding=dp(8), spacing=dp(2), height=dp(36 + 22 * n + 16))
             top = BoxLayout(size_hint_y=None, height=dp(34))
-            top.add_widget(Lbl("%d. %s" % (i, shape(r["name"])), size=19, bold=True, color="accent" if i == 1 else "text"))
-            top.add_widget(Lbl(tf("%d نقطة", "%d pts", r["total"]), size=19, bold=True, size_hint_x=None, width=dp(100)))
+            top.add_widget(Lbl("%d. %s" % (i, shape(r["name"])), size=19, bold=True, color="accent" if i == 1 else "text",
+                               shorten=True, shorten_from=_cut(), max_lines=1))
+            top.add_widget(Lbl(tf("الرصيد المتبقي %d", "Budget left %d", r["budget"]), size=13, color="muted",
+                               size_hint_x=None, width=dp(130)))
             card.add_widget(top)
-            card.add_widget(Lbl(tf("قوة %d  تكامل %+d  مقالب %+d  رصيد %d", "Power %d  Combo %+d  Pranks %+d  Budget %d",
-                                   r["power"], r["combo"], r["pranks"], r["budget"]), size=12, color="muted",
-                                size_hint_y=None, height=dp(22)))
-            card.add_widget(Lbl(txt, size=13, size_hint_y=None, height=dp(20 * n)))
+            card.add_widget(Lbl(txt, size=13, size_hint_y=None, height=dp(22 * n)))
             rows.append(card)
         page.add_widget(scroll_list(rows, 100))
         if s.is_admin:

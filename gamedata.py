@@ -128,30 +128,71 @@ CATEGORIES = [
   ("x", "ثقب في السفينة", "Hull Leak", -7), ("x", "هجوم الكراكن", "Kraken Attack", -9)]),
 ]
 
-GENERIC = [
-  ("lucky", "ورقة يانصيب رابحة", "Winning Lottery Ticket", 6), ("lucky", "حظ سعيد", "Lucky Charm", 5),
-  ("lucky", "هدية مفاجئة", "Surprise Gift", 4), ("lucky", "مساعد متطوع", "Volunteer Helper", 5),
-  ("lucky", "تخفيض خاص", "Special Discount", 3), ("lucky", "صديق مؤثر", "Influential Friend", 6),
-  ("x", "ضريبة مفاجئة", "Surprise Tax", -4), ("x", "فأر في المخزن", "Mouse in the Storage", -3),
-  ("x", "سرقة صغيرة", "Petty Theft", -5), ("x", "تأخير في التنفيذ", "Project Delay", -4),
-  ("x", "قشرة موز", "Banana Peel", -2), ("x", "حريق صغير", "Small Fire", -6),
-  ("x", "مقلب من الأصدقاء", "Prank from Friends", -3), ("x", "شبكة عنكبوت عملاقة", "Giant Cobweb", -2)]
+# Extra tangible things that are only handed out as random gifts / pranks (never auctioned).
+EXTRA = {
+ "palace": [("hall", "غرفة المرايا", "Hall of Mirrors", 6), ("garden", "بركة الأسماك الذهبية", "Golden Koi Pond", 5),
+            ("defense", "مدافع السور", "Wall Cannons", 6), ("luxury", "عرش مرصّع بالجواهر", "Jeweled Throne", 8),
+            ("room", "غرفة الخياطة الملكية", "Royal Tailor Room", 4),
+            ("x", "شرخ في الجدار", "Cracked Wall", -4), ("x", "خفافيش في البرج", "Bats in the Tower", -3)],
+ "house": [("room", "غرفة مكتب", "Home Office", 6), ("outdoor", "شواية في الحديقة", "Garden Grill", 5),
+           ("tech", "كاميرات مراقبة", "Security Cameras", 6), ("comfort", "مدفأة حطب", "Wood Stove", 5),
+           ("outdoor", "أرجوحة حديقة", "Swing Set", 4),
+           ("x", "تسريب في السقف", "Roof Leak", -4), ("x", "باب لا يُقفل", "Broken Door Lock", -3)],
+ "restaurant": [("kitchen", "آلة قهوة احترافية", "Pro Coffee Machine", 6), ("hall", "نافورة في المدخل", "Entrance Fountain", 5),
+                ("menu", "قائمة المشروبات", "Drinks Menu", 5), ("vibe", "شاشة عرض الأطباق", "Menu Display Screen", 4),
+                ("kitchen", "غسالة أطباق صناعية", "Industrial Dishwasher", 5),
+                ("x", "فأر في المخزن", "Mouse in the Storage", -4), ("x", "طاولة مكسورة", "Broken Table", -3)],
+ "beach": [("fun", "دراجات مائية", "Jet Skis", 9), ("relax", "أراجيح معلقة", "Hammocks", 5),
+           ("food", "عربة ذرة مشوية", "Corn Cart", 4), ("safety", "قارب إنقاذ", "Rescue Boat", 7),
+           ("fun", "ألواح تزلج على الأمواج", "Surfboards", 6),
+           ("x", "كلب يحفر في الرمل", "Dog Digging the Sand", -3), ("x", "حبل الشاطئ ينقطع", "Torn Beach Rope", -3)],
+ "park": [("ride", "أرجوحة السفينة", "Pirate Ship Swing", 7), ("kids", "حمام الكرات الملونة", "Ball Pit", 5),
+          ("food", "عربة الفشار", "Popcorn Cart", 4), ("show", "كشك التصوير الفوري", "Photo Booth", 5),
+          ("ride", "الأكواب الدوّارة", "Spinning Cups", 6),
+          ("x", "بالونات تطير بعيداً", "Balloons Flying Away", -3), ("x", "ماكينة تذاكر معطلة", "Broken Ticket Machine", -4)],
+ "football": [("GK", "جانلويجي بوفون", "Gianluigi Buffon", 18), ("DEF", "باولو مالديني", "Paolo Maldini", 18),
+              ("MID", "أندريا بيرلو", "Andrea Pirlo", 17), ("ATT", "رونالدينيو", "Ronaldinho", 18),
+              ("ATT", "زلاتان إبراهيموفيتش", "Zlatan Ibrahimovic", 17),
+              ("x", "حذاء ممزق", "Torn Boots", -4), ("x", "كرة مثقوبة", "Punctured Ball", -4)],
+ "heroes": [("tech", "سيارة الباتموبيل", "Batmobile", 12), ("tech", "درع الطاقة", "Power Armor", 11),
+            ("magic", "عباءة سحرية", "Magic Cloak", 9), ("speed", "حذاء السرعة", "Speed Boots", 8),
+            ("strength", "قفازات القوة", "Power Gloves", 8),
+            ("x", "عباءة متشابكة", "Tangled Cape", -3), ("x", "سيارة بلا وقود", "Out-of-Fuel Car", -4)],
+ "marvel": [("hero", "درع كابتن أمريكا", "Captain America's Shield", 12), ("cosmic", "حجر الزمن", "Time Stone", 14),
+            ("cosmic", "مطرقة مجولنير", "Mjolnir", 15), ("hero", "بدلة الرجل الحديدي", "Iron Man Suit", 13),
+            ("magic", "عين أغاموتو", "Eye of Agamotto", 12),
+            ("x", "بدلة معطلة", "Broken Suit", -4), ("x", "درع مشروخ", "Cracked Shield", -4)],
+ "zoo": [("special", "القرد العنكبوتي", "Spider Monkey", 6), ("birds", "البجعة البيضاء", "White Swan", 5),
+         ("sea", "فقمة", "Seal", 6), ("big", "وحيد القرن", "Rhinoceros", 10), ("cats", "فهد الثلج", "Snow Leopard", 11),
+         ("x", "سور مكسور", "Broken Fence", -4), ("x", "ثعبان هارب", "Escaped Snake", -5)],
+ "space": [("ship", "قمر صناعي", "Satellite", 9), ("lab", "مجهر فضائي", "Space Microscope", 6),
+           ("power", "بطاريات ضخمة", "Giant Batteries", 6), ("life", "خزان مياه معاد تدويرها", "Recycled Water Tank", 6),
+           ("life", "كبسولة إنقاذ", "Escape Pod", 8),
+           ("x", "كابل ممزق", "Torn Cable", -4), ("x", "شرخ في الخوذة", "Cracked Helmet", -5)],
+ "pirate": [("loot", "عملات ذهبية", "Gold Coins", 7), ("ship", "شراع جديد", "New Sail", 6),
+            ("weapon", "بندقية قديمة", "Old Flintlock", 7), ("crew", "طباخ السفينة", "Ship's Cook", 5),
+            ("loot", "تاج مفقود", "Lost Crown", 9),
+            ("x", "فئران في عنبر السفينة", "Rats in the Hold", -4), ("x", "شراع ممزق", "Torn Sail", -4)],
+}
 
 ITEMS = {}            # id -> (tag, ar, en, power, category id)
-CAT = {}              # id -> category dict (adds: good, prank, tags)
+CAT = {}              # id -> category dict (adds: auction, good, prank, tags)
+GENERIC = []          # kept empty: every item now belongs to a category (no abstract "luck" cards)
 GEN_GOOD, GEN_PRANK = [], []
 for _c in CATEGORIES:
-    _c["good"], _c["prank"] = [], []
+    _c["auction"], _c["good"], _c["prank"] = [], [], []
     for _i, _it in enumerate(_c["items"]):
         _id = "%s:%d" % (_c["id"], _i)
         ITEMS[_id] = _it + (_c["id"],)
+        if _it[3] > 0:
+            _c["auction"].append(_id)
         (_c["good"] if _it[3] > 0 else _c["prank"]).append(_id)
-    _c["tags"] = sorted({ITEMS[i][0] for i in _c["good"]})
+    for _j, _it in enumerate(EXTRA.get(_c["id"], [])):
+        _id = "%s:x%d" % (_c["id"], _j)
+        ITEMS[_id] = _it + (_c["id"],)
+        (_c["good"] if _it[3] > 0 else _c["prank"]).append(_id)
+    _c["tags"] = sorted({ITEMS[i][0] for i in _c["auction"]})
     CAT[_c["id"]] = _c
-for _i, _it in enumerate(GENERIC):
-    _id = "g:%d" % _i
-    ITEMS[_id] = _it + ("g",)
-    (GEN_GOOD if _it[3] > 0 else GEN_PRANK).append(_id)
 
 
 def item_name(iid, lang):

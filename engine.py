@@ -73,7 +73,7 @@ class Engine:
         if self.phase != "lobby" or len(self.players) < 2:
             return False
         cat = CAT[self.cfg["cat"]]
-        self.deck = list(cat["good"])
+        self.deck = list(cat["auction"])
         random.shuffle(self.deck)
         self.rounds = min(self.cfg["rounds"], len(self.deck))
         self.round = 0
