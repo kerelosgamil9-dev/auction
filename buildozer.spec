@@ -14,7 +14,7 @@ orientation = portrait
 fullscreen = 0
 
 android.permissions = INTERNET, ACCESS_NETWORK_STATE, ACCESS_WIFI_STATE, CHANGE_WIFI_MULTICAST_STATE
-android.api = 33
+android.api = 34
 android.minapi = 26
 android.ndk = 25b
 android.ndk_api = 26
