@@ -24,12 +24,22 @@ jobs:
 
       - name: Install build tools
         run: |
-          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf automake libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
           python -m pip install --upgrade pip setuptools wheel
           pip install buildozer "cython<3"
 
       - name: Build APK
-        run: buildozer -v android debug
+        shell: bash
+        run: buildozer -v android debug 2>&1 | tee build.log
+
+      - name: Show real error
+        if: failure()
+        shell: bash
+        run: |
+          echo "=== LAST 50 LINES ==="
+          tail -n 50 build.log
+          echo "=== LINES WITH Command failed / Traceback ==="
+          grep -n -E "Command failed|Traceback|BUILD FAILED|FAILURE|No such file|not found" build.log | tail -n 30
 
       - uses: actions/upload-artifact@v4
         with:
